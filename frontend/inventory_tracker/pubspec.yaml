@@ -1,0 +1,40 @@
+name: inventory_tracker
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.4.1 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  provider: ^6.1.2
+  
+  # HTTP Client
+  http: ^1.1.0
+  
+  # Secure Storage
+  flutter_secure_storage: ^9.2.2
+  
+  # QR Code Generation and Scanning
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^4.0.0 # Modern alternative to qr_code_scanner
+  
+  # Permissions
+  permission_handler: ^11.3.1
+  
+  # UI
+  cupertino_icons: ^1.0.6
+  equatable: ^2.0.7
+  flutter_bloc: ^9.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
