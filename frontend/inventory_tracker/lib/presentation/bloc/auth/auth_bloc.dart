@@ -7,7 +7,6 @@ import 'package:inventory_tracker/domain/usecases/auth/login_user.dart';
 import 'package:inventory_tracker/domain/usecases/auth/logout_user.dart';
 import 'package:inventory_tracker/domain/usecases/auth/register_user.dart';
 import 'package:inventory_tracker/repositories/auth_repository_impl.dart';
-
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
   @override
@@ -46,9 +45,10 @@ class AuthLoadingState extends AuthState {}
 
 class AuthenticatedState extends AuthState {
   final UserEntity user;
-  const AuthenticatedState(this.user);
+  final String token;
+  const AuthenticatedState({required this.user, required this.token});
   @override
-  List<Object> get props => [user];
+  List<Object> get props => [user, token];
 }
 
 class UnauthenticatedState extends AuthState {}
@@ -73,8 +73,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final checkAuthStatusUsecase = CheckAuthStatus(authRepository);
     final isAuthenticated = await checkAuthStatusUsecase.call(NoParams());
     if (isAuthenticated) {
+      final token = await authRepository.getToken();
       // Logic to get user details would go here
-      emit(const AuthenticatedState(UserEntity(id: 0, email: '')));
+      emit(AuthenticatedState(user: UserEntity(id: 0, email: 'user@example.com'), token: token!));
     } else {
       emit(UnauthenticatedState());
     }
@@ -85,9 +86,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final loginUsecase = LoginUser(authRepository);
       final user = await loginUsecase.call(LoginParams(email: event.email, password: event.password));
-      emit(AuthenticatedState(user));
+      final token = await authRepository.getToken();
+      emit(AuthenticatedState(user: user, token: token!));
     } catch (e) {
-      emit(const AuthErrorState('Login failed. Please check your credentials.'));
+      emit(AuthErrorState('Login failed. Please check your credentials.'));
     }
   }
 
@@ -96,9 +98,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final registerUsecase = RegisterUser(authRepository);
       final user = await registerUsecase.call(RegisterParams(email: event.email, password: event.password));
-      emit(AuthenticatedState(user));
+      final token = await authRepository.getToken();
+      emit(AuthenticatedState(user: user, token: token!));
     } catch (e) {
-      emit(const AuthErrorState('Registration failed. Please try again.'));
+      emit(AuthErrorState('Registration failed. Please try again.'));
     }
   }
 

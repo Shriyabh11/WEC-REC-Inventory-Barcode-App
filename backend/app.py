@@ -32,12 +32,6 @@ def home():
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-@app.route('/api/debug/token', methods=['GET'])
-@jwt_required()
-def debug_token():
-    user_id = get_jwt_identity()
-    return jsonify({'user_id': user_id, 'type': type(user_id).__name__})
-
 # Database initialization
 def init_db():
     conn = sqlite3.connect('inventory.db')
@@ -120,7 +114,6 @@ def generate_qr_code(data):
     return base64.b64encode(img_buffer.getvalue()).decode()
 
 # Auth Routes
-# Auth Routes
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -179,11 +172,10 @@ def login():
         'access_token': access_token,
         'user': {'id': user['id'], 'email': user['email']}
     }), 200
-# Product Routes
 @app.route('/api/products', methods=['GET'])
 @jwt_required()
 def get_products():
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())  # ✅ Convert to int
     conn = get_db()
     cursor = conn.cursor()
     
@@ -209,45 +201,11 @@ def get_products():
     
     conn.close()
     return jsonify({'products': products}), 200
-
-@app.route('/api/products', methods=['POST'])
-@jwt_required()
-def create_product():
-    user_id = get_jwt_identity()
-    data = request.get_json()
-    
-    name = data.get('name')
-    description = data.get('description', '')
-    threshold = data.get('threshold', 0)
-    
-    if not name:
-        return jsonify({'message': 'Product name required'}), 400
-    
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        INSERT INTO products (user_id, name, description, threshold)
-        VALUES (?, ?, ?, ?)
-    ''', (user_id, name, description, threshold))
-    
-    product_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
-    
-    return jsonify({
-        'id': product_id,
-        'name': name,
-        'description': description,
-        'quantity': 0,
-        'threshold': threshold
-    }), 201
-
+# Fixed receive_item function
 @app.route('/api/products/<int:product_id>/receive', methods=['POST'])
 @jwt_required()
-def receive_item():
-    user_id = get_jwt_identity()
-    product_id = product_id
+def receive_item(product_id):  # ✅ Accept product_id as parameter
+    user_id = int(get_jwt_identity())  # ✅ Convert to int for DB queries
     
     conn = get_db()
     cursor = conn.cursor()
@@ -297,7 +255,7 @@ def receive_item():
 @app.route('/api/items/dispatch', methods=['POST'])
 @jwt_required()
 def dispatch_item():
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())  # ✅ Convert to int
     data = request.get_json()
     barcode_data = data.get('barcode_data')
     

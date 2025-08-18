@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_tracker/domain/entities/alert_entity.dart';
 import 'package:inventory_tracker/domain/entities/product_entity.dart';
 import 'package:inventory_tracker/presentation/bloc/auth/auth_bloc.dart';
 import 'package:inventory_tracker/presentation/bloc/product/product_bloc.dart';
@@ -142,7 +143,7 @@ class __ProductListScreenState extends State<_ProductListScreen> {
     );
   }
 
-  Widget _buildAlertsSection(List<ProductEntity> alerts) {
+  Widget _buildAlertsSection(List<AlertEntity> alerts) {
     return Container(
       color: Colors.orange.shade50,
       padding: const EdgeInsets.all(16),
@@ -161,7 +162,7 @@ class __ProductListScreenState extends State<_ProductListScreen> {
           ),
           const SizedBox(height: 8),
           ...alerts.map((alert) => Text(
-            '${alert.name}: ${alert.quantity} of ${alert.threshold}',
+            '${alert.productName}: ${alert.currentQuantity} of ${alert.threshold}',
             style: TextStyle(color: Colors.orange.shade800),
           )),
         ],

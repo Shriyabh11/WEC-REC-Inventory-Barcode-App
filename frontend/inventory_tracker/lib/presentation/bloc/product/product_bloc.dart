@@ -2,7 +2,10 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_tracker/core/usecases/usecases.dart';
 import 'package:inventory_tracker/datasources/product_remote_datasource.dart';
+import 'package:inventory_tracker/domain/entities/alert_entity.dart';
 import 'package:inventory_tracker/domain/entities/product_entity.dart';
+import 'package:inventory_tracker/domain/entities/user_entity.dart';
+import 'package:inventory_tracker/domain/repositories/product_repository.dart';
 import 'package:inventory_tracker/domain/usecases/product/create_product.dart';
 import 'package:inventory_tracker/domain/usecases/product/dispatch_item.dart';
 import 'package:inventory_tracker/domain/usecases/product/get_alerts.dart';
@@ -12,8 +15,6 @@ import 'package:inventory_tracker/presentation/bloc/auth/auth_bloc.dart';
 import 'package:inventory_tracker/repositories/product_repository_impl.dart';
 
 
-
-// Events
 abstract class ProductEvent extends Equatable {
   const ProductEvent();
   @override
@@ -58,11 +59,11 @@ class ProductInitial extends ProductState {}
 class ProductLoadingState extends ProductState {}
 class ProductsLoadedState extends ProductState {
   final List<ProductEntity> products;
-  final List<ProductEntity> alerts;
+  final List<AlertEntity> alerts;
   final Map<String, dynamic>? barcodeResponse;
   const ProductsLoadedState({
     this.products = const [],
-    this.alerts = const [],
+    this.alerts = const  [],
     this.barcodeResponse,
   });
   @override
@@ -89,12 +90,12 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
 
     authBloc.stream.listen((authState) {
       if (authState is AuthenticatedState) {
-        final token = authState.user.id.toString();
+        final token = authState.token;
         productRepository.remoteDataSource = ProductRemoteDataSource(token);
         add(FetchProductsEvent());
       } else if (authState is UnauthenticatedState) {
         productRepository.remoteDataSource = ProductRemoteDataSource('DUMMY_TOKEN');
-        emit(const ProductsLoadedState(products: [], alerts: []));
+        emit(ProductsLoadedState(products: [], alerts: []));
       }
     });
   }

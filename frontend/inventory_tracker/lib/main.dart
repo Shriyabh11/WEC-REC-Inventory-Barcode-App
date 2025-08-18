@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
               final authBloc = context.read<AuthBloc>();
               return ProductBloc(
                 productRepository: ProductRepositoryImpl(
-                  ProductRemoteDataSource('DUMMY_TOKEN') // Dummy token for initial setup
+                  ProductRemoteDataSource("f0ebcbc8f720d1e6619d770cf0bcb0eec038a91897b7441427d38feefbae03a3") // Dummy token for initial setup
                 ),
                 authBloc: authBloc,
               );

@@ -20,7 +20,7 @@ class AuthWrapper extends StatelessWidget {
         if (state is AuthenticatedState) {
           return const DashboardScreen();
         } else {
-          return const DashboardScreen();
+          return  LoginScreen();
         }
       },
     );
