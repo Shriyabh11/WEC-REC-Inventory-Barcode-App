@@ -33,7 +33,7 @@ class ProductRemoteDataSource {
   Future<Map<String, dynamic>> createProduct(String name, String description, int threshold) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/products'),
+        Uri.parse('$baseUrl/products/create'),
         headers: _headers,
         body: json.encode({
           'name': name,
