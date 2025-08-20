@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_tracker/core/usecases/usecases.dart';
-import 'package:inventory_tracker/datasources/product_remote_datasource.dart';
+import 'package:inventory_tracker/data/datasources/product_remote_datasource.dart';
 import 'package:inventory_tracker/domain/entities/alert_entity.dart';
 import 'package:inventory_tracker/domain/entities/product_entity.dart';
 import 'package:inventory_tracker/domain/entities/user_entity.dart';
@@ -12,7 +12,7 @@ import 'package:inventory_tracker/domain/usecases/product/get_alerts.dart';
 import 'package:inventory_tracker/domain/usecases/product/get_products.dart';
 import 'package:inventory_tracker/domain/usecases/product/recieve_item.dart';
 import 'package:inventory_tracker/presentation/bloc/auth/auth_bloc.dart';
-import 'package:inventory_tracker/repositories/product_repository_impl.dart';
+import 'package:inventory_tracker/data/repositories/product_repository_impl.dart';
 
 
 abstract class ProductEvent extends Equatable {

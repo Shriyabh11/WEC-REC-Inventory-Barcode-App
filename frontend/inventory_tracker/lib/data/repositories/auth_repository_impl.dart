@@ -1,5 +1,5 @@
 
-import 'package:inventory_tracker/datasources/auth_remote_datasource.dart';
+import 'package:inventory_tracker/data/datasources/auth_remote_datasource.dart';
 import 'package:inventory_tracker/domain/entities/user_entity.dart';
 import 'package:inventory_tracker/domain/repositories/auth_repository.dart';
 

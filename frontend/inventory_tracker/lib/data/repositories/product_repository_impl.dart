@@ -1,5 +1,5 @@
 import 'dart:developer' as developer;
-import 'package:inventory_tracker/datasources/product_remote_datasource.dart';
+import 'package:inventory_tracker/data/datasources/product_remote_datasource.dart';
 import 'package:inventory_tracker/domain/entities/alert_entity.dart';
 import 'package:inventory_tracker/domain/entities/product_entity.dart';
 import 'package:inventory_tracker/domain/repositories/product_repository.dart';

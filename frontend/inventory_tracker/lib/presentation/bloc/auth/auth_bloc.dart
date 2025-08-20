@@ -6,7 +6,7 @@ import 'package:inventory_tracker/domain/usecases/auth/check_auth_status.dart';
 import 'package:inventory_tracker/domain/usecases/auth/login_user.dart';
 import 'package:inventory_tracker/domain/usecases/auth/logout_user.dart';
 import 'package:inventory_tracker/domain/usecases/auth/register_user.dart';
-import 'package:inventory_tracker/repositories/auth_repository_impl.dart';
+import 'package:inventory_tracker/data/repositories/auth_repository_impl.dart';
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
   @override

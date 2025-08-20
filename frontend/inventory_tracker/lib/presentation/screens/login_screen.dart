@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_tracker/presentation/bloc/auth/auth_bloc.dart';
 
+
 class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
   @override
   _LoginScreenState createState() => _LoginScreenState();
 }
@@ -11,6 +14,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController(text: 'test@test.com');
   final _passwordController = TextEditingController(text: 'password123');
   bool _isLogin = true;
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void dispose() {
@@ -20,21 +24,22 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleAuth() {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showSnackbar('Please enter email and password');
-      return;
-    }
-    
-    if (_isLogin) {
-      context.read<AuthBloc>().add(LoginEvent(
-        email: _emailController.text,
-        password: _passwordController.text,
-      ));
-    } else {
-      context.read<AuthBloc>().add(RegisterEvent(
-        email: _emailController.text,
-        password: _passwordController.text,
-      ));
+    if (_formKey.currentState!.validate()) {
+      if (_isLogin) {
+        context.read<AuthBloc>().add(
+          LoginEvent(
+            email: _emailController.text,
+            password: _passwordController.text,
+          ),
+        );
+      } else {
+        context.read<AuthBloc>().add(
+          RegisterEvent(
+            email: _emailController.text,
+            password: _passwordController.text,
+          ),
+        );
+      }
     }
   }
 
@@ -46,6 +51,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthErrorState) {
@@ -55,65 +62,116 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Scaffold(
         body: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Inventory Scanner',
-                  style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor,
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    _isLogin ? 'Welcome Back!' : 'Welcome!',
+                    style: theme.textTheme.headlineMedium!.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-                const SizedBox(height: 48),
-                TextField(
-                  controller: _emailController,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    prefixIcon: const Icon(Icons.email),
+                  const SizedBox(height: 8),
+                  Text(
+                    _isLogin ? 'Log in to your account' : 'Create a new account',
+                    style: theme.textTheme.titleMedium!.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  keyboardType: TextInputType.emailAddress,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _passwordController,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    prefixIcon: const Icon(Icons.lock),
+                  const SizedBox(height: 48),
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(Icons.email_outlined),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your email';
+                      }
+                      return null;
+                    },
                   ),
-                  obscureText: true,
-                ),
-                const SizedBox(height: 24),
-                BlocBuilder<AuthBloc, AuthState>(
-                  builder: (context, state) {
-                    if (state is AuthLoadingState) {
-                      return const CircularProgressIndicator();
-                    }
-                    return ElevatedButton(
-                      onPressed: _handleAuth,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _passwordController,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(Icons.lock_outline),
+                    ),
+                    obscureText: true,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your password';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, state) {
+                      if (state is AuthLoadingState) {
+                        return Center(child: CircularProgressIndicator(color: theme.colorScheme.primary));
+                      }
+                      return ElevatedButton(
+                        onPressed: _handleAuth,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
+                          elevation: 5,
+                        ),
+                        child: Text(
+                          _isLogin ? 'Log In' : 'Sign Up',
+                          style: theme.textTheme.titleMedium!.copyWith(
+                            color: theme.colorScheme.onPrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _isLogin = !_isLogin;
+                        _formKey.currentState?.reset();
+                      });
+                    },
+                    child: RichText(
+                      text: TextSpan(
+                        style: theme.textTheme.bodyLarge!.copyWith(
+                          color: theme.colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: _isLogin ? 'Need an account? ' : 'Have an account? ',
+                          ),
+                          TextSpan(
+                            text: _isLogin ? 'Sign Up' : 'Log In',
+                            style: TextStyle(
+                              color: theme.colorScheme.secondary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
-                      child: Text(_isLogin ? 'Log In' : 'Sign Up'),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _isLogin = !_isLogin;
-                    });
-                  },
-                  child: Text(
-                    _isLogin ? 'Need an account? Sign Up' : 'Have an account? Log In',
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

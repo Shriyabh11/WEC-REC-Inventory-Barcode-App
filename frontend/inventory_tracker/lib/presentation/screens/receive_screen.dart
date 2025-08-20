@@ -7,8 +7,6 @@ import 'package:inventory_tracker/domain/entities/product_entity.dart';
 import 'package:inventory_tracker/presentation/bloc/product/product_bloc.dart';
 import 'package:inventory_tracker/presentation/screens/barcode_display_screen.dart';
 
-
-
 class ReceiveScreen extends StatefulWidget {
   const ReceiveScreen({super.key});
 
@@ -19,6 +17,14 @@ class ReceiveScreen extends StatefulWidget {
 class _ReceiveScreenState extends State<ReceiveScreen> {
   ProductEntity? _selectedProduct;
 
+  @override
+  void initState() {
+    super.initState();
+    // It's a good practice to fetch products when the screen is first loaded
+    // to ensure the list is up-to-date.
+    context.read<ProductBloc>().add(FetchProductsEvent());
+  }
+
   void _receiveItem(BuildContext context) {
     if (_selectedProduct == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -26,13 +32,17 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
       );
       return;
     }
-    
-    context.read<ProductBloc>().add(ReceiveItemEvent(
-      productId: _selectedProduct!.id,
-    ));
+
+    context.read<ProductBloc>().add(
+      ReceiveItemEvent(
+        productId: _selectedProduct!.id,
+      ),
+    );
   }
-  
+
   void _showBarcodeDisplayScreen(Map<String, dynamic> response) async {
+    // Navigate to BarcodeDisplayScreen after a successful receive action
+    // We get the data directly from the Bloc state.
     final qrImageBytes = await BarcodeUtils.generateQrCodeImage(response['barcode_data']);
     final qrImageBase64 = base64Encode(qrImageBytes);
 
@@ -51,12 +61,13 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return BlocListener<ProductBloc, ProductState>(
       listener: (context, state) {
         if (state is ProductsLoadedState && state.barcodeResponse != null) {
           _showBarcodeDisplayScreen(state.barcodeResponse!);
-          // Once the response is handled, reset the barcodeResponse to avoid re-triggering
-          context.read<ProductBloc>().add(FetchProductsEvent()); 
+         
         } else if (state is ProductErrorState) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
         }
@@ -66,57 +77,79 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
           if (state is ProductLoadingState) {
             return const Center(child: CircularProgressIndicator());
           }
-          
+
           if (state is ProductErrorState) {
             return Center(child: Text(state.message));
           }
-          
+
           if (state is ProductsLoadedState) {
             final products = state.products;
             return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text(
                     'Select a product to receive:',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: theme.textTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),
                 Expanded(
-                  child: ListView.builder(
-                    itemCount: products.length,
-                    itemBuilder: (context, index) {
-                      final product = products[index];
-                      return Card(
-                        child: RadioListTile<ProductEntity>(
-                          value: product,
-                          groupValue: _selectedProduct,
-                          onChanged: (value) => setState(() => _selectedProduct = value),
-                          title: Text(product.name),
-                          subtitle: Text('Current Stock: ${product.quantity}'),
-                          secondary: product.isLowStock
-                              ? const Icon(Icons.warning, color: Colors.orange)
-                              : null,
+                  child: products.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No products available to receive.',
+                            style: theme.textTheme.titleMedium!.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.5)),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: products.length,
+                          itemBuilder: (context, index) {
+                            final product = products[index];
+                            return _buildProductRadioTile(context, product);
+                          },
                         ),
-                      );
-                    },
-                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: (_selectedProduct == null) ? null : () => _receiveItem(context),
-                      child: const Text('Generate Barcode & Receive Item'),
+                    child: ElevatedButton.icon(
+                      onPressed: (_selectedProduct == null || state is ProductLoadingState) ? null : () => _receiveItem(context),
+                      icon: const Icon(Icons.add_box_rounded),
+                      label: const Text('Generate Barcode & Receive Item'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 5,
+                      ),
                     ),
                   ),
                 ),
               ],
             );
           }
-          return Container();
+          return const SizedBox.shrink();
         },
+      ),
+    );
+  }
+
+  Widget _buildProductRadioTile(BuildContext context, ProductEntity product) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: RadioListTile<ProductEntity>(
+        value: product,
+        groupValue: _selectedProduct,
+        onChanged: (value) => setState(() => _selectedProduct = value),
+        title: Text(product.name, style: theme.textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold)),
+        subtitle: Text('Current Stock: ${product.quantity}', style: theme.textTheme.bodyMedium),
+        secondary: product.isLowStock
+            ? Icon(Icons.warning_rounded, color: theme.colorScheme.error)
+            : null,
       ),
     );
   }

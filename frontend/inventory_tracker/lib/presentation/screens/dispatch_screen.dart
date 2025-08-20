@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_tracker/domain/entities/product_entity.dart';
 
 import 'package:inventory_tracker/presentation/bloc/product/product_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 
 class DispatchScreen extends StatefulWidget {
   const DispatchScreen({super.key});
@@ -24,6 +24,12 @@ class _DispatchScreenState extends State<DispatchScreen> {
     _requestCameraPermission();
   }
 
+  @override
+  void dispose() {
+    _scannerController.dispose();
+    super.dispose();
+  }
+
   Future<void> _requestCameraPermission() async {
     await Permission.camera.request();
   }
@@ -40,17 +46,63 @@ class _DispatchScreenState extends State<DispatchScreen> {
 
     context.read<ProductBloc>().add(DispatchItemEvent(barcodeData: code));
   }
-
-
-  void _showErrorDialog(BuildContext context, String error) {
+  
+  void _showSuccessDialog(ProductEntity response) {
+    final theme = Theme.of(context);
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Dispatch Failed'),
-        content: Text(error.contains('already dispatched') 
-                      ? 'This item has already been dispatched'
-                      : 'Invalid barcode or item not found'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle_outline_rounded, color: Colors.green),
+            SizedBox(width: 8),
+            Text('Dispatch Successful'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Barcode created successfully!"),
+            const SizedBox(height: 8),
+            Text('Product: ${response.name}'),
+            Text('New Quantity: ${response.quantity}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _resetScanner();
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorDialog(String error) {
+    final theme = Theme.of(context);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline_rounded, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Dispatch Failed'),
+          ],
+        ),
+        content: Text(
+          error.contains('already dispatched')
+              ? 'This item has already been dispatched.'
+              : 'Invalid barcode or item not found.',
+        ),
         actions: [
           TextButton(
             onPressed: () {
@@ -74,15 +126,28 @@ class _DispatchScreenState extends State<DispatchScreen> {
 
   void _showManualEntryDialog() {
     final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Manual Barcode Entry'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Enter Barcode',
-            hintText: 'e.g., 1|1|abc-123',
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            decoration: InputDecoration(
+              labelText: 'Enter Barcode',
+              hintText: 'e.g., 1|1|abc-123',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter a barcode';
+              }
+              return null;
+            },
           ),
         ),
         actions: [
@@ -92,8 +157,8 @@ class _DispatchScreenState extends State<DispatchScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
-              if (controller.text.isNotEmpty) {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(context);
                 _handleScannedCode(controller.text, context);
               }
             },
@@ -106,69 +171,104 @@ class _DispatchScreenState extends State<DispatchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return BlocListener<ProductBloc, ProductState>(
       listener: (context, state) {
-        if (state is ProductsLoadedState) {
-          // This state is emitted on a successful dispatch (due to FetchProductsEvent)
-          // We can't get the specific response here, so we need to
-          // show a generic success dialog or refactor the bloc further.
-          // For now, let's assume success and close the dialog
-          if (_isProcessing) {
-             _resetScanner();
+        if (state is ProductErrorState ) {
+         if (_isProcessing) {
+            _showErrorDialog(state.message);
           }
-        } else if (state is ProductErrorState) {
-          if (_isProcessing) {
-            _showErrorDialog(context, state.message);
-          }
+         
+        } else  {
+           _showSuccessDialog("Successfully dispatched item" as ProductEntity);
         }
       },
       child: Column(
         children: [
           Expanded(
             flex: 4,
-            child: MobileScanner(
-              controller: _scannerController,
-              onDetect: (capture) {
-                final List<Barcode> barcodes = capture.barcodes;
-                if (barcodes.isNotEmpty && !_isProcessing) {
-                  _handleScannedCode(barcodes.first.rawValue!, context);
-                }
-              },
+            child: Stack(
+              children: [
+                MobileScanner(
+                  controller: _scannerController,
+                  onDetect: (capture) {
+                    final List<Barcode> barcodes = capture.barcodes;
+                    if (barcodes.isNotEmpty && !_isProcessing) {
+                      _handleScannedCode(barcodes.first.rawValue!, context);
+                    }
+                  },
+                ),
+                // Scanner overlay/instructions
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _isProcessing ? 'Processing...' : 'Scan Barcode',
+                      style: theme.textTheme.titleLarge!.copyWith(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(
             flex: 1,
             child: Container(
               padding: const EdgeInsets.all(16),
+              color: theme.colorScheme.surface,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (_scannedCode != null)
-                    Text('Scanned: $_scannedCode', style: const TextStyle(fontFamily: 'monospace')),
-                  if (_isProcessing)
-                    const Column(
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 8),
-                        Text('Processing...'),
-                      ],
+                  if (_scannedCode != null && !_isProcessing)
+                    Text(
+                      'Last Scanned: $_scannedCode',
+                      style: theme.textTheme.bodyLarge!.copyWith(
+                        fontFamily: 'monospace',
+                        color: theme.colorScheme.onSurface,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  const SizedBox(height: 16),
+                  if (_isProcessing)
+                    const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 8),
+                          Text('Dispatching item...'),
+                        ],
+                      ),
+                    ),
+                  const Spacer(),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: _scannerController.toggleTorch,
+                          onPressed: _isProcessing ? null : _scannerController.toggleTorch,
                           icon: const Icon(Icons.flash_on),
-                          label: const Text('Toggle Flash'),
+                          label: const Text('Flash'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: _showManualEntryDialog,
-                          icon: const Icon(Icons.edit),
-                          label: const Text('Manual Entry'),
+                          onPressed: _isProcessing ? null : _showManualEntryDialog,
+                          icon: const Icon(Icons.edit_note_rounded),
+                          label: const Text('Manual'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
                         ),
                       ),
                     ],

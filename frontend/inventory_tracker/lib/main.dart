@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_tracker/datasources/auth_remote_datasource.dart';
-import 'package:inventory_tracker/datasources/product_remote_datasource.dart';
+import 'package:inventory_tracker/data/datasources/auth_remote_datasource.dart';
+import 'package:inventory_tracker/data/datasources/product_remote_datasource.dart';
 import 'package:inventory_tracker/presentation/bloc/auth/auth_bloc.dart';
 import 'package:inventory_tracker/presentation/bloc/product/product_bloc.dart';
 import 'package:inventory_tracker/presentation/screens/auth_wrapper.dart';
-import 'package:inventory_tracker/repositories/auth_repository_impl.dart';
-import 'package:inventory_tracker/repositories/product_repository_impl.dart';
+import 'package:inventory_tracker/data/repositories/auth_repository_impl.dart';
+import 'package:inventory_tracker/data/repositories/product_repository_impl.dart';
 
 void main() {
   runApp(const MyApp());
