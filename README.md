@@ -111,7 +111,7 @@ frontend/inventory_tracker/
 ---
 ## Demo 
 
-1. Creating an account, adding a product, and receiving an item: https://drive.google.com/file/d/1Pr8ok6jMllz3UeGDi2GNOTiie0k-UypI/view?usp=sharing
+1. Creating an account, adding a product, and receiving an item: [https://drive.google.com/file/d/1Pr8ok6jMllz3UeGDi2GNOTiie0k-UypI/view?usp=sharing](https://drive.google.com/file/d/1untOdpWApiHyOZ-vbUdmQELOo0i5m6vi/view?usp=sharing)
 2. Dispatching item: https://drive.google.com/file/d/1EBch5SWV7Tp_XxSclM08nPVUkk8saUze/view?usp=sharing (used the laptop webcam as the back camera of emulator to scan qr code).
 ## Customization
 
