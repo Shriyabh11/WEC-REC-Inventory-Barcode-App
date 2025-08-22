@@ -1,6 +1,4 @@
 import 'dart:convert';
-
-
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
@@ -44,5 +42,26 @@ class AuthRemoteDataSource {
 
   Future<void> deleteToken() async {
     await _storage.delete(key: 'auth_token');
+  }
+
+  Future<Map<String, dynamic>> getUserData() async {
+    final token = await getToken();
+    if (token == null) {
+      throw Exception('No token found');
+    }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/auth/me'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to fetch user data: ${response.statusCode}');
+    }
   }
 }

@@ -1,7 +1,6 @@
-
-import 'package:inventory_tracker/data/datasources/auth_remote_datasource.dart';
 import 'package:inventory_tracker/domain/entities/user_entity.dart';
 import 'package:inventory_tracker/domain/repositories/auth_repository.dart';
+import '../datasources/auth_remote_datasource.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
@@ -30,5 +29,11 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<String?> getToken() async {
     return await remoteDataSource.getToken();
+  }
+
+  @override
+  Future<UserEntity> getUserFromToken() async {
+    final response = await remoteDataSource.getUserData();
+    return UserEntity.fromMap(response['user']);
   }
 }

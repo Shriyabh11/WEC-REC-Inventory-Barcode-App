@@ -1,12 +1,10 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_tracker/core/usecases/usecases.dart';
 import 'package:inventory_tracker/domain/entities/user_entity.dart';
-import 'package:inventory_tracker/domain/usecases/auth/check_auth_status.dart';
-import 'package:inventory_tracker/domain/usecases/auth/login_user.dart';
-import 'package:inventory_tracker/domain/usecases/auth/logout_user.dart';
-import 'package:inventory_tracker/domain/usecases/auth/register_user.dart';
-import 'package:inventory_tracker/data/repositories/auth_repository_impl.dart';
+import 'package:inventory_tracker/domain/repositories/auth_repository.dart';
+import 'package:inventory_tracker/services/app_initialization_service.dart';
+
+// Events
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
   @override
@@ -41,28 +39,33 @@ abstract class AuthState extends Equatable {
 }
 
 class AuthInitial extends AuthState {}
-class AuthLoadingState extends AuthState {}
 
-class AuthenticatedState extends AuthState {
+class AuthLoading extends AuthState {}
+
+class Authenticated extends AuthState {
   final UserEntity user;
-  final String token;
-  const AuthenticatedState({required this.user, required this.token});
+  const Authenticated({required this.user});
   @override
-  List<Object> get props => [user, token];
+  List<Object> get props => [user];
 }
 
-class UnauthenticatedState extends AuthState {}
-class AuthErrorState extends AuthState {
+class Unauthenticated extends AuthState {}
+
+class AuthFailure extends AuthState {
   final String message;
-  const AuthErrorState(this.message);
+  const AuthFailure(this.message);
   @override
   List<Object> get props => [message];
 }
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final AuthRepositoryImpl authRepository;
+  final AuthRepository authRepository;
+  final AppInitializationService? appInitService;
 
-  AuthBloc({required this.authRepository}) : super(AuthInitial()) {
+  AuthBloc({
+    required this.authRepository,
+    this.appInitService,
+  }) : super(AuthInitial()) {
     on<AppStarted>(_onAppStarted);
     on<LoginEvent>(_onLoginEvent);
     on<RegisterEvent>(_onRegisterEvent);
@@ -70,44 +73,81 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onAppStarted(AppStarted event, Emitter<AuthState> emit) async {
-    final checkAuthStatusUsecase = CheckAuthStatus(authRepository);
-    final isAuthenticated = await checkAuthStatusUsecase.call(NoParams());
-    if (isAuthenticated) {
-      final token = await authRepository.getToken();
-      // Logic to get user details would go here
-      emit(AuthenticatedState(user: UserEntity(id: 0, email: 'user@example.com'), token: token!));
-    } else {
-      emit(UnauthenticatedState());
+    emit(AuthLoading());
+    try {
+      if (appInitService != null) {
+        final isAuthenticated = await appInitService!.initializeApp();
+        if (isAuthenticated) {
+          final user = await authRepository.getUserFromToken();
+          emit(Authenticated(user: user));
+        } else {
+          emit(Unauthenticated());
+        }
+      } else {
+        final token = await authRepository.getToken();
+        if (token != null && token.isNotEmpty) {
+          try {
+            final user = await authRepository.getUserFromToken();
+            emit(Authenticated(user: user));
+          } catch (e) {
+            await authRepository.logout();
+            emit(Unauthenticated());
+          }
+        } else {
+          emit(Unauthenticated());
+        }
+      }
+    } catch (e) {
+      emit(AuthFailure('Failed to initialize app: $e'));
     }
   }
 
   Future<void> _onLoginEvent(LoginEvent event, Emitter<AuthState> emit) async {
-    emit(AuthLoadingState());
+    emit(AuthLoading());
     try {
-      final loginUsecase = LoginUser(authRepository);
-      final user = await loginUsecase.call(LoginParams(email: event.email, password: event.password));
-      final token = await authRepository.getToken();
-      emit(AuthenticatedState(user: user, token: token!));
+      final user = await authRepository.login(event.email, event.password);
+      if (appInitService != null) {
+        final token = await authRepository.getToken();
+        if (token != null) {
+          await appInitService!.onLoginSuccess(token);
+        }
+      }
+      emit(Authenticated(user: user));
     } catch (e) {
-      emit(AuthErrorState('Login failed. Please check your credentials.'));
+      emit(AuthFailure(
+          'Login failed: ${e.toString().replaceAll('Exception: ', '')}'));
     }
   }
 
-  Future<void> _onRegisterEvent(RegisterEvent event, Emitter<AuthState> emit) async {
-    emit(AuthLoadingState());
+  Future<void> _onRegisterEvent(
+      RegisterEvent event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
     try {
-      final registerUsecase = RegisterUser(authRepository);
-      final user = await registerUsecase.call(RegisterParams(email: event.email, password: event.password));
-      final token = await authRepository.getToken();
-      emit(AuthenticatedState(user: user, token: token!));
+      final user = await authRepository.register(event.email, event.password);
+      if (appInitService != null) {
+        final token = await authRepository.getToken();
+        if (token != null) {
+          await appInitService!.onLoginSuccess(token);
+        }
+      }
+      emit(Authenticated(user: user));
     } catch (e) {
-      emit(AuthErrorState('Registration failed. Please try again.'));
+      emit(AuthFailure(
+          'Registration failed: ${e.toString().replaceAll('Exception: ', '')}'));
     }
   }
 
-  Future<void> _onLogoutEvent(LogoutEvent event, Emitter<AuthState> emit) async {
-    final logoutUsecase = LogoutUser(authRepository);
-    await logoutUsecase.call(NoParams());
-    emit(UnauthenticatedState());
+  Future<void> _onLogoutEvent(
+      LogoutEvent event, Emitter<AuthState> emit) async {
+    try {
+      if (appInitService != null) {
+        await appInitService!.onLogout();
+      } else {
+        await authRepository.logout();
+      }
+      emit(Unauthenticated());
+    } catch (e) {
+      emit(AuthFailure('Logout failed: $e'));
+    }
   }
 }

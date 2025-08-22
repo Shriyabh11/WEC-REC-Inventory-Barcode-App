@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-
 class BarcodeDisplayScreen extends StatelessWidget {
   final String barcodeData;
   final String qrImage;
@@ -41,7 +40,8 @@ class BarcodeDisplayScreen extends StatelessWidget {
           children: [
             Card(
               elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Column(
@@ -65,10 +65,11 @@ class BarcodeDisplayScreen extends StatelessWidget {
                     ),
                     Text(
                       '$newQuantity',
-                      style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-                        color: Colors.green.shade700,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.headlineMedium!.copyWith(
+                                color: Colors.green.shade700,
+                                fontWeight: FontWeight.bold,
+                              ),
                     ),
                     const SizedBox(height: 24),
                     const Text(
@@ -86,7 +87,8 @@ class BarcodeDisplayScreen extends StatelessWidget {
                       child: SelectableText(
                         barcodeData,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontFamily: 'monospace', fontSize: 16),
+                        style: const TextStyle(
+                            fontFamily: 'monospace', fontSize: 16),
                       ),
                     ),
                   ],
@@ -100,7 +102,8 @@ class BarcodeDisplayScreen extends StatelessWidget {
               label: const Text('Copy Barcode Data'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 16),
@@ -110,7 +113,8 @@ class BarcodeDisplayScreen extends StatelessWidget {
               label: const Text('Done'),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ],

@@ -1,7 +1,5 @@
-
 import 'package:inventory_tracker/core/usecases/usecases.dart';
 import 'package:inventory_tracker/domain/entities/alert_entity.dart';
-import 'package:inventory_tracker/domain/entities/product_entity.dart';
 import 'package:inventory_tracker/domain/repositories/product_repository.dart';
 
 class GetAlerts extends Usecase<List<AlertEntity>, NoParams> {

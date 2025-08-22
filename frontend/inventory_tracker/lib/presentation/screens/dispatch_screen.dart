@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_tracker/domain/entities/product_entity.dart';
-
-import 'package:inventory_tracker/presentation/bloc/product/product_bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_tracker/domain/entities/product_entity.dart';
+import 'package:inventory_tracker/presentation/bloc/product/product_bloc.dart';
 
 class DispatchScreen extends StatefulWidget {
   const DispatchScreen({super.key});
@@ -46,9 +45,8 @@ class _DispatchScreenState extends State<DispatchScreen> {
 
     context.read<ProductBloc>().add(DispatchItemEvent(barcodeData: code));
   }
-  
-  void _showSuccessDialog(ProductEntity response) {
-    final theme = Theme.of(context);
+
+  void _showSuccessDialog(String message, ProductEntity product) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -65,10 +63,10 @@ class _DispatchScreenState extends State<DispatchScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Barcode created successfully!"),
+            Text(message),
             const SizedBox(height: 8),
-            Text('Product: ${response.name}'),
-            Text('New Quantity: ${response.quantity}'),
+            Text('Product: ${product.name}'),
+            Text('New Quantity: ${product.quantity}'),
           ],
         ),
         actions: [
@@ -85,7 +83,6 @@ class _DispatchScreenState extends State<DispatchScreen> {
   }
 
   void _showErrorDialog(String error) {
-    final theme = Theme.of(context);
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -140,7 +137,8 @@ class _DispatchScreenState extends State<DispatchScreen> {
             decoration: InputDecoration(
               labelText: 'Enter Barcode',
               hintText: 'e.g., 1|1|abc-123',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -175,13 +173,29 @@ class _DispatchScreenState extends State<DispatchScreen> {
 
     return BlocListener<ProductBloc, ProductState>(
       listener: (context, state) {
-        if (state is ProductErrorState ) {
-         if (_isProcessing) {
-            _showErrorDialog(state.message);
-          }
-         
-        } else  {
-           _showSuccessDialog("Successfully dispatched item" as ProductEntity);
+        if (_isProcessing) {
+          setState(() {
+            _isProcessing = false;
+          });
+        }
+
+        if (state is ProductActionSuccessState) {
+          final updatedProduct = state.products.firstWhere(
+            (product) =>
+                product.items.any((item) => item.barcode == _scannedCode),
+            orElse: () => const ProductEntity(
+              id: 0,
+              name: 'Unknown',
+              quantity: 0,
+              threshold: 0,
+              description: '',
+              isLowStock: false,
+              items: [],
+            ),
+          );
+          _showSuccessDialog(state.message, updatedProduct);
+        } else if (state is ProductErrorState) {
+          _showErrorDialog(state.message);
         }
       },
       child: Column(
@@ -199,7 +213,6 @@ class _DispatchScreenState extends State<DispatchScreen> {
                     }
                   },
                 ),
-                // Scanner overlay/instructions
                 Center(
                   child: Container(
                     padding: const EdgeInsets.all(16),
@@ -209,10 +222,15 @@ class _DispatchScreenState extends State<DispatchScreen> {
                     ),
                     child: Text(
                       _isProcessing ? 'Processing...' : 'Scan Barcode',
-                      style: theme.textTheme.titleLarge!.copyWith(color: Colors.white),
+                      style: theme.textTheme.titleLarge!
+                          .copyWith(color: Colors.white),
                     ),
                   ),
                 ),
+                if (_isProcessing)
+                  const Center(
+                    child: CircularProgressIndicator(),
+                  ),
               ],
             ),
           ),
@@ -250,24 +268,14 @@ class _DispatchScreenState extends State<DispatchScreen> {
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: _isProcessing ? null : _scannerController.toggleTorch,
-                          icon: const Icon(Icons.flash_on),
-                          label: const Text('Flash'),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _isProcessing ? null : _showManualEntryDialog,
+                          onPressed:
+                              _isProcessing ? null : _showManualEntryDialog,
                           icon: const Icon(Icons.edit_note_rounded),
                           label: const Text('Manual'),
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),

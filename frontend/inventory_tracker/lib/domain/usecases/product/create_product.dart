@@ -14,6 +14,7 @@ class CreateProduct extends Usecase<ProductEntity, CreateProductParams> {
       params.name,
       params.description,
       params.threshold,
+      params.imagePath,
     );
   }
 }
@@ -22,13 +23,15 @@ class CreateProductParams extends Equatable {
   final String name;
   final String description;
   final int threshold;
+  final String? imagePath;
 
   const CreateProductParams({
     required this.name,
     required this.description,
     required this.threshold,
+    this.imagePath,
   });
 
   @override
-  List<Object?> get props => [name, description, threshold];
+  List<Object?> get props => [name, description, threshold, imagePath];
 }

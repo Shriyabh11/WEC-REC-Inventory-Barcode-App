@@ -1,4 +1,3 @@
-
 import 'dart:typed_data';
 
 import 'package:qr_flutter/qr_flutter.dart';

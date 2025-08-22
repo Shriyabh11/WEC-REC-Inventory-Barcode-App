@@ -20,8 +20,6 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
   @override
   void initState() {
     super.initState();
-    // It's a good practice to fetch products when the screen is first loaded
-    // to ensure the list is up-to-date.
     context.read<ProductBloc>().add(FetchProductsEvent());
   }
 
@@ -34,16 +32,15 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
     }
 
     context.read<ProductBloc>().add(
-      ReceiveItemEvent(
-        productId: _selectedProduct!.id,
-      ),
-    );
+          ReceiveItemEvent(
+            productId: _selectedProduct!.id,
+          ),
+        );
   }
 
   void _showBarcodeDisplayScreen(Map<String, dynamic> response) async {
-    // Navigate to BarcodeDisplayScreen after a successful receive action
-    // We get the data directly from the Bloc state.
-    final qrImageBytes = await BarcodeUtils.generateQrCodeImage(response['barcode_data']);
+    final qrImageBytes =
+        await BarcodeUtils.generateQrCodeImage(response['barcode_data']);
     final qrImageBase64 = base64Encode(qrImageBytes);
 
     Navigator.push(
@@ -67,9 +64,9 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
       listener: (context, state) {
         if (state is ProductsLoadedState && state.barcodeResponse != null) {
           _showBarcodeDisplayScreen(state.barcodeResponse!);
-         
         } else if (state is ProductErrorState) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(state.message)));
         }
       },
       child: BlocBuilder<ProductBloc, ProductState>(
@@ -91,7 +88,8 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
                   padding: const EdgeInsets.all(16.0),
                   child: Text(
                     'Select a product to receive:',
-                    style: theme.textTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleLarge!
+                        .copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),
                 Expanded(
@@ -99,7 +97,9 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
                       ? Center(
                           child: Text(
                             'No products available to receive.',
-                            style: theme.textTheme.titleMedium!.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.5)),
+                            style: theme.textTheme.titleMedium!.copyWith(
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.5)),
                           ),
                         )
                       : ListView.builder(
@@ -115,12 +115,16 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: (_selectedProduct == null || state is ProductLoadingState) ? null : () => _receiveItem(context),
+                      onPressed: (_selectedProduct == null ||
+                              state is ProductLoadingState)
+                          ? null
+                          : () => _receiveItem(context),
                       icon: const Icon(Icons.add_box_rounded),
                       label: const Text('Generate Barcode & Receive Item'),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         elevation: 5,
                       ),
                     ),
@@ -145,8 +149,11 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
         value: product,
         groupValue: _selectedProduct,
         onChanged: (value) => setState(() => _selectedProduct = value),
-        title: Text(product.name, style: theme.textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold)),
-        subtitle: Text('Current Stock: ${product.quantity}', style: theme.textTheme.bodyMedium),
+        title: Text(product.name,
+            style: theme.textTheme.titleMedium!
+                .copyWith(fontWeight: FontWeight.bold)),
+        subtitle: Text('Current Stock: ${product.quantity}',
+            style: theme.textTheme.bodyMedium),
         secondary: product.isLowStock
             ? Icon(Icons.warning_rounded, color: theme.colorScheme.error)
             : null,
