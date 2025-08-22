@@ -105,11 +105,14 @@ frontend/inventory_tracker/
 1. **Sign up or log in.**
 2. **Add a product** (name, description, image, threshold).
 3. **Receive items**: Select a product, receive an item, and get a barcode.
-4. **Dispatch items**: Scan a barcode to dispatch an item.
+4. **Dispatch items**: Scan a barcode to dispatch an item. Item once dispatched, cannot be dispatched again.
 5. **Monitor stock**: Get alerts when products are low on stock.
 
 ---
+## Demo 
 
+1. Creating an account, adding a product, and receiving an item: https://drive.google.com/file/d/1Pr8ok6jMllz3UeGDi2GNOTiie0k-UypI/view?usp=sharing
+2. Dispatching item: https://drive.google.com/file/d/1EBch5SWV7Tp_XxSclM08nPVUkk8saUze/view?usp=sharing (used the laptop webcam as the back camera of emulator to scan qr code).
 ## Customization
 
 - **Database:**  
@@ -118,11 +121,6 @@ frontend/inventory_tracker/
 - **Barcode Type:**  
   QR and Code128 supported. See `utils.py` for barcode generation logic.
 
----
-
-## License
-
-MIT License
 
 ---
 
