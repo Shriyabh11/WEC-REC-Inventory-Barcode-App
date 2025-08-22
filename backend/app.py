@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
 import os
@@ -9,7 +9,7 @@ from routes.product_routes import products_bp
 
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'fallback-key-for-dev')
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -29,6 +29,10 @@ def not_found(error):
 @app.errorhandler(500)
 def internal_error(error):
     return jsonify({'message': 'Internal server error'}), 500
+
+@app.route('/static/product_images/<filename>')
+def serve_product_image(filename):
+    return send_from_directory('static/product_images', filename)
 
 # Register blueprints
 app.register_blueprint(auth_bp)

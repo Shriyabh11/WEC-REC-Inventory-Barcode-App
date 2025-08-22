@@ -1,99 +1,176 @@
-import uuid
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
 import sqlite3
-from utils import get_db, generate_barcode_data, generate_qr_code, parse_barcode_data
+import uuid
+import os
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from werkzeug.utils import secure_filename
+from utils import generate_barcode_data, get_db, parse_barcode_data, generate_qr_code
 
 products_bp = Blueprint('products_bp', __name__)
 
+UPLOAD_FOLDER = 'static/product_images'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@products_bp.route('/api/products', methods=['GET'])
+@jwt_required()
+def get_products():
+    try:
+        print("get_products called")
+        user_id = int(get_jwt_identity())
+        print(f"user_id: {user_id}")
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Fetch all products for the user
+        cursor.execute('''
+            SELECT id, name, description, image_path, quantity, threshold, created_at
+            FROM products
+            WHERE user_id = ?
+        ''', (user_id,))
+        product_rows = cursor.fetchall()
+        print(f"Fetched {len(product_rows)} products")
+
+        # Fetch all items for the user
+        cursor.execute('''
+            SELECT id, product_id, barcode, status
+            FROM items
+            WHERE user_id = ?
+        ''', (user_id,))
+        item_rows = cursor.fetchall()
+        print(f"Fetched {len(item_rows)} items")
+
+        conn.close()
+
+        # Organize items by product_id for fast lookup
+        items_by_product = {}
+        for item_row in item_rows:
+            product_id = item_row['product_id']
+            if product_id not in items_by_product:
+                items_by_product[product_id] = []
+            items_by_product[product_id].append({
+                'id': item_row['id'],
+                'barcode': item_row['barcode'],
+                'status': item_row['status'],
+                #'created_at': item_row['created_at']
+            })
+
+        products_list = []
+        for product_row in product_rows:
+            is_low_stock = product_row['quantity'] < product_row['threshold'] if product_row['threshold'] > 0 else False
+
+            product_data = {
+                'id': product_row['id'],
+                'name': product_row['name'],
+                'description': product_row['description'],
+                'image_path': product_row['image_path'],
+                'quantity': product_row['quantity'],
+                'threshold': product_row['threshold'],
+                #'created_at': product_row['created_at'],
+                'is_low_stock': is_low_stock,
+                'items': items_by_product.get(product_row['id'], [])
+            }
+            products_list.append(product_data)
+
+        print("Returning products:", products_list)
+        return jsonify({'products': products_list}), 200
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({'message': f'Database error: {str(e)}'}), 500
+    except Exception as e:
+        print(f"Server error: {e}")
+        return jsonify({'message': f'Server error: {str(e)}'}), 500
 @products_bp.route('/api/products/create', methods=['POST'])
 @jwt_required()
 def create_product():
     try:
         user_id = int(get_jwt_identity())
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({'message': 'No data provided'}), 400
-        
-        name = data.get('name', '').strip()
-        description = data.get('description', '').strip()
-        threshold = data.get('threshold', 0)
-        
+        # Accept both JSON and multipart/form-data
+        if request.content_type.startswith('multipart/form-data'):
+            name = request.form.get('name', '').strip()
+            description = request.form.get('description', '').strip()
+            threshold = request.form.get('threshold', 0)
+            file = request.files.get('image')
+        else:
+            data = request.get_json()
+            name = data.get('name', '').strip()
+            description = data.get('description', '').strip()
+            threshold = data.get('threshold', 0)
+            file = None
+
         if not name:
             return jsonify({'message': 'Product name is required'}), 400
-        
+
         if len(name) > 255:
             return jsonify({'message': 'Product name too long (max 255 characters)'}), 400
-        
+
         try:
             threshold = int(threshold) if threshold is not None else 0
             if threshold < 0:
                 return jsonify({'message': 'Threshold cannot be negative'}), 400
         except (ValueError, TypeError):
             return jsonify({'message': 'Invalid threshold value'}), 400
-        
+
+        image_path = None
+        if file and allowed_file(file.filename):
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            filename = secure_filename(file.filename)
+            save_path = os.path.join(UPLOAD_FOLDER, filename)
+            file.save(save_path)
+            image_path = save_path
+
         conn = get_db()
         cursor = conn.cursor()
-        
+
         # Check if product name already exists for this user
         cursor.execute('SELECT id FROM products WHERE user_id = ? AND name = ?', (user_id, name))
         if cursor.fetchone():
             conn.close()
             return jsonify({'message': 'Product with this name already exists'}), 409
-        
-        cursor.execute('INSERT INTO products (user_id, name, description, threshold) VALUES (?, ?, ?, ?)',
-                      (user_id, name, description, threshold))
+
+        cursor.execute(
+            'INSERT INTO products (user_id, name, description, threshold, image_path) VALUES (?, ?, ?, ?, ?)',
+            (user_id, name, description, threshold, image_path)
+        )
         conn.commit()
         product_id = cursor.lastrowid
+
+        # Fetch the complete product data to return
+        cursor.execute('''
+            SELECT id, name, description, image_path, quantity, threshold, created_at
+            FROM products 
+            WHERE id = ?
+        ''', (product_id,))
+        product_row = cursor.fetchone()
+
+        is_low_stock = product_row['quantity'] < product_row['threshold'] if product_row['threshold'] > 0 else False
+
+        product = {
+            'id': product_row['id'],
+            'name': product_row['name'],
+            'description': product_row['description'],
+            'image_path': product_row['image_path'],
+            'quantity': product_row['quantity'],
+            'threshold': product_row['threshold'],
+            'created_at': product_row['created_at'],
+            'is_low_stock': is_low_stock,
+            'items': []
+        }
+
         conn.close()
 
         return jsonify({
             'message': 'Product created successfully',
-            'product_id': product_id,
-            'name': name
+            'product': product
         }), 201
-        
-    except sqlite3.Error as e:
-        return jsonify({'message': f'Database error: {str(e)}'}), 500
-    except Exception as e:
-        return jsonify({'message': 'Failed to create product'}), 500
 
-@products_bp.route('/api/products', methods=['GET'])
-@jwt_required()
-def get_products():
-    try:
-        user_id = int(get_jwt_identity())
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT id, name, description, image_path, quantity, threshold, created_at
-            FROM products 
-            WHERE user_id = ?
-            ORDER BY created_at DESC
-        ''', (user_id,))
-        
-        products = []
-        for row in cursor.fetchall():
-            products.append({
-                'id': row['id'],
-                'name': row['name'],
-                'description': row['description'],
-                'image_path': row['image_path'],
-                'quantity': row['quantity'],
-                'threshold': row['threshold'],
-                'created_at': row['created_at'],
-                'is_low_stock': row['quantity'] < row['threshold'] if row['threshold'] > 0 else False
-            })
-        
-        conn.close()
-        return jsonify({'products': products}), 200
-        
     except sqlite3.Error as e:
         return jsonify({'message': f'Database error: {str(e)}'}), 500
     except Exception as e:
-        return jsonify({'message': 'Failed to fetch products'}), 500
+        return jsonify({'message': f'Server error: {str(e)}'}), 500
 
 @products_bp.route('/api/products/<int:product_id>', methods=['GET'])
 @jwt_required()
@@ -114,6 +191,23 @@ def get_product(product_id):
             conn.close()
             return jsonify({'message': 'Product not found'}), 404
         
+        # Fetch all items for the product
+        cursor.execute('''
+            SELECT id, barcode, status, created_at
+            FROM items
+            WHERE product_id = ?
+        ''', (product_id,))
+        item_rows = cursor.fetchall()
+        
+        items_list = []
+        for item_row in item_rows:
+            items_list.append({
+                'id': item_row['id'],
+                'barcode': item_row['barcode'],
+                'status': item_row['status'],
+                'created_at': item_row['created_at']
+            })
+
         product = {
             'id': row['id'],
             'name': row['name'],
@@ -122,7 +216,8 @@ def get_product(product_id):
             'quantity': row['quantity'],
             'threshold': row['threshold'],
             'created_at': row['created_at'],
-            'is_low_stock': row['quantity'] < row['threshold'] if row['threshold'] > 0 else False
+            'is_low_stock': row['quantity'] < row['threshold'] if row['threshold'] > 0 else False,
+            'items': items_list # ✨ Add the items list to the single product response ✨
         }
         
         conn.close()
